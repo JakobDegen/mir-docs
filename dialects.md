@@ -23,9 +23,9 @@ section on the drop terminatorss for more details.
 
 At this point, the post borrow check cleanup has run and a bunch of things are removed:
 
-* `Terminator::DropAndReplace`
-* `Terminator::FalseUnwind`
-* `Terminator::FalseEdge`
+* `TerminatorKind::DropAndReplace`
+* `TerminatorKind::FalseUnwind`
+* `TerminatorKind::FalseEdge`
 * `StatementKind::FakeRead`
 * `StatementKind::AscribeUserType`
 * `Rvalue::Ref` with `BorrowKind::Shallow`

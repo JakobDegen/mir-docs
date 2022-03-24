@@ -9,10 +9,9 @@ The basic block pointed to by a `cleanup` field must have its `cleanup` flag set
 blocks have a couple restrictions:
  1. All `cleanup` fields in them must be `None`.
  2. `Return` terminators are not allowed in them. `Abort` and `Unwind` terminators are.
- 3. All other basic blocks (in the current body) that execution may reach from `cleanup` basic
-    blocks must also be `cleanup`. This is a part of the type system and checked statically, so it
-    is still an error to have such an edge in the CFG even if it's known that it won't be taken at
-    runtime.
+ 3. All other basic blocks (in the current body) that are reachable from `cleanup` basic blocks must
+    also be `cleanup`. This is a part of the type system and checked statically, so it is still an
+    error to have such an edge in the CFG even if it's known that it won't be taken at runtime.
 
 # By Terminator
 
@@ -31,9 +30,10 @@ Target values may not appear more than once. There must be an "otherwise" target
 
 ## `Return`
 
-Returns from the function. This assigns the value currently in the return place (`_0`) to the return
-place specified in the associated `Call` terminator in the calling function, as if assigned via
-`dest = move _0`.
+Returns from the function. Like function calls, the exact semantics of returns in Rust are unclear.
+Returning very likely at least assigns the value currently in the return place (`_0`) to the place
+specified in the associated `Call` terminator in the calling function, as if assigned via
+`dest = move _0`. It might additionally do other things.
 
 If the body is a generator body, this has slightly different semantics; it instead causes a
 `GeneratorState::Returned(_0)` to be created (by reading `_0`) and assigned to the return place.
@@ -45,8 +45,8 @@ Indicates that this cannot be reached. Executing this terminator is UB.
 ## `Resume` & `Abort`
 
 Indicates that the landing pad is finished and that the process should either continue unwinding or
-abort, respectively. This is comparable to a return in that all locals are dead at this point.
-However, unlike a return, the return place is also dead.
+abort, respectively. This is comparable to a return in that this marks the end of this invocation of
+the function.
 
 Only permitted in cleanup blocks. `Resume` is not permitted with `-C unwind=abort` after
 deaggregation runs.
@@ -75,9 +75,10 @@ assignment of the value to the place. This assignment happens both on the normal
 unwind path.
 
 `Drop` before drop elaboration is a *conditional* execution of the drop glue. Specifically, the
-`Drop` will be executed if
+`Drop` will be executed if...
 
-**NC**: Clarify this. This in effect should document the exact behavior of drop elaboration. The following sounds vaguely right, but I'm not quite sure:
+**NC**: Clarify this. This in effect should document the exact behavior of drop elaboration. The
+following sounds vaguely right, but I'm not quite sure:
 
 > The drop glue is executed if, among all statements executed within this `Body`, an assignment to
 > the place or one of its "parents" occurred more recently than a move out of it. This does not
@@ -89,7 +90,8 @@ Evaluates the operand, which must have type `bool`. If it is not equal to `expec
 panic. Initiating a panic corresponds to a `Call` terminator with some unspecified constant as the
 function to call, all the operands stored in the `AssertKind` as parameters, and a `!` return type.
 Keep in mind that the `cleanup` path is not necessarily executed even in the case of a panic, for
-example in `-C panic=abort`. If there is no panic, execution continues at the specified basic block.
+example in `-C panic=abort`. If the assertion does not fail, execution continues at the specified
+basic block.
 
 ## `Yield`
 
@@ -100,7 +102,7 @@ execution of this function continues at the `resume` basic block, with the argum
 
 Not permitted in bodies that are not generator bodies, or after generator lowering.
 
-**TODO**: What about the evaluation order of the `resume_arg` and `value`?
+**NC**: What about the evaluation order of the `resume_arg` and `value`?
 
 ## `GeneratorDrop`
 

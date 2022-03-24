@@ -9,33 +9,35 @@ Yields the operand unchanged.
 
 ## `Repeat`
 
-Creates an array where each element is the value of the operand. This currently does not drop the value even if the number of repetitions is zero, see [#74836][74836].
+Creates an array where each element is the value of the operand. This currently does not drop the
+value even if the number of repetitions is zero, see [#74836][74836].
 
 [74836]: https://github.com/rust-lang/rust/issues/74836
 
 ## `Ref` & `AddressOf`
 
 Generates an appropriately typed reference or pointer to the place. There is not much to document
-here, because besides the obvious part the semantics of this are essentially entirely a part of the
+here, because besides the obvious parts the semantics of this are essentially entirely a part of the
 aliasing model. There are too many UCG issues to link.
 
-`Shallow` borrows do not correspond to an actual type, and are disallowed after drop lowering.
+`Shallow` borrows are disallowed after drop lowering.
 
 ## `ThreadLocalRef`
 
 Returns a pointer/reference to the given thread local. The return type is a `*mut T` if the static
 is mutable, otherwise if the static is exter a `*const T`, and if neither of those apply a `&T`.
 
-**Note:** This is a runtime operation that executes code. Also, DSEing these causes SIGILLs before
-main for some reason that I never got a chance to look into.
+**Note:** This is a runtime operation that actually executes quite a bit of code and is in this
+sense more like a function call. Also, DSEing these causes `fn main() {}` to SIGILL for some reason
+that I never got a chance to look into.
 
 **NC**: Are there weird additional semantics here related to the runtime nature of this operation?
 
 ## `Len`
 
 Yields the length of the place, as a `usize`. If the type of the place is an array, this is the
-array length. **TODO**: This for slices. In reality, I actually have to go through everything and
-make sure it's correct for DSTs, so this will just be a part of that.
+array length. This also works for slices (`[T]`, not `&[T]`) through some mechanism that depends on
+how exactly places work (see there for more details).
 
 ## `Cast` & `ShallowInitBox`
 
@@ -55,8 +57,8 @@ combinations of types are that are allowed.
 perform two's-complement arithmetic on integers. Division by zero (including modulo operations) are
 UB. Besides that:
 
-* The comparison operations accept `bool`s, `char`s, signed or unsigned integers, or floats of the
-  same type, and return a `bool`.
+* The comparison operations accept `bool`s, `char`s, signed or unsigned integers, or floats and
+  return a `bool`. Of course the types of the sides of the comparison must match.
 * Left and right shift operations accept signed or unsigned integers not necessarily of the same
   type and return a value of the same type as their LHS.
 * The remaining operations accept signed integers, unsigned integers, or floats of any matching type
@@ -66,12 +68,12 @@ UB. Besides that:
 
 ## `CheckedBinaryOp`
 
-Same as `BinaryOp`, but returns `Option<T>` instead of `T`. Furthermore, instead of performing
+Same as `BinaryOp`, but yields `Option<T>` instead of `T`. Furthermore, instead of performing
 two's-complement arithmetic, checks if the infinite precison result would be unequal to the
 two's-complement result and returns `None` if so. `BinOp::Offset` is not allowed here.
 
-**NC**: What about division/modulo? Are they allowed here at all? Are zero divisors still UB? Also,
-which other combinations of types are disallowed?
+**NC/TODO**: What about division/modulo? Are they allowed here at all? Are zero divisors still UB?
+Also, which other combinations of types are disallowed?
 
 ## `UnaryOp`
 
